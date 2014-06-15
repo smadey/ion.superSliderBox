@@ -196,7 +196,7 @@
                 // if not an animation, just reposition
                 if (!speed) {
 
-                    element.style.left = to + 'px';
+                    element.style[ltCssName] = to + 'px';
                     return;
 
                 }
