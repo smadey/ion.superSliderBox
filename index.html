@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" ng-app="App">
+<head>
+    <meta charset="UTF-8">
+    <title>Ion Super Slider Box Demo</title>
+
+    <link rel="stylesheet" href="./ionic.min.css">
+    <style>
+        h2 {
+            text-align: center;
+        }
+        .slider {
+            height: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            width: 600px;
+        }
+        .slider + h2 {
+            margin-top: 50px;
+        }
+        .red {
+            background-color: red;
+        }
+        .green {
+            background-color: green;
+        }
+        .blue {
+            background-color: blue;
+        }
+    </style>
+
+    <script src="./ionic.bundle.min.js"></script>
+    <script src="./ionic.superslidebox.js"></script>
+    <script>
+        var app = angular.module('App', ['ionic', 'ionic.ui.superSlideBox']);
+
+        app.config(['$stateProvider', '$urlRouterProvider',
+            function($stateProvider, $urlRouterProvider) {
+                $stateProvider.state('index', {
+                    url: '/',
+                    templateUrl: 'view.html'
+                });
+                $urlRouterProvider.otherwise('/');
+            }
+        ]);
+    </script>
+</head>
+<body>
+    <div ui-view></div>
+</body>
+</html>
