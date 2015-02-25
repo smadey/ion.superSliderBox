@@ -3,15 +3,17 @@
 
     ionic.views.SuperSlider = ionic.views.View.inherit({
         initialize: function(options) {
+            var slider = this;
+
             // utilities
             var noop = function() {}; // simple no operation function
             var offloadFn = function(fn) {
-                setTimeout(fn || noop, 0)
+                setTimeout(fn || noop, 0);
             }; // offload a functions execution
 
             // check browser capabilities
             var browser = {
-                addEventListener: !! window.addEventListener,
+                addEventListener: !!window.addEventListener,
                 touch: ('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch,
                 transitions: (function(temp) {
                     var props = ['transitionProperty', 'WebkitTransition', 'MozTransition', 'OTransition', 'msTransition'];
@@ -34,13 +36,12 @@
             options.continuous = options.continuous !== undefined ? options.continuous : true;
 
             var whCssName, ltCssName, posName;
-            if(options.direction === 'vertical') {
+            if (options.direction === 'vertical') {
                 options.direction = 'vertical';
                 whCssName = 'height';
                 ltCssName = 'top';
                 posName = 'y';
-            }
-            else {
+            } else {
                 options.direction = 'horizontal';
                 whCssName = 'width';
                 ltCssName = 'left';
@@ -66,8 +67,8 @@
                 // create an array to store current positions of each slide
                 slidePos = new Array(slides.length);
 
-                // determine width or height of each slide
-                wh = container.getBoundingClientRect()[whCssName] || container[offset + (whCssName.slice(0,1).toUpperCase() + whCssName.slice(1))];
+                // determine width of each slide
+                wh = container.getBoundingClientRect()[whCssName] || container[offset + (whCssName.slice(0, 1).toUpperCase() + whCssName.slice(1))];
 
                 element.style[whCssName] = (slides.length * wh) + 'px';
 
@@ -185,7 +186,7 @@
                     style.transitionDuration = speed + 'ms';
 
                 style.webkitTransform =
-                    style.msTransform =
+                style.msTransform =
                     style.MozTransform =
                     style.OTransform = 'translate' + posName.toUpperCase() + '(' + dist + 'px)';
 
@@ -201,15 +202,15 @@
 
                 }
 
-                var start = +new Date;
+                var start = +new Date();
 
                 var timer = setInterval(function() {
 
-                    var timeElap = +new Date - start;
+                    var timeElap = +new Date() - start;
 
                     if (timeElap > speed) {
 
-                        element.style[ltCssName] = to + 'px';
+                        element.style.left = to + 'px';
 
                         if (delay) begin();
 
@@ -268,10 +269,10 @@
                             this.start(event);
                             break;
                         case 'touchmove':
-                            this.move(event);
+                            this.touchmove(event);
                             break;
                         case 'mousemove':
-                            this.move(event);
+                            this.touchmove(event);
                             break;
                         case 'touchend':
                             offloadFn(this.end(event));
@@ -306,7 +307,7 @@
                         y: touches.pageY,
 
                         // store time to determine touch duration
-                        time: +new Date
+                        time: +new Date()
 
                     };
 
@@ -326,10 +327,15 @@
                         document.addEventListener('mouseup', this, false);
                     }
                 },
-                move: function(event) {
+                touchmove: function(event) {
 
                     // ensure swiping with one touch and not pinching
-                    if (event.touches.length > 1 || event.scale && event.scale !== 1) return
+                    // ensure sliding is enabled
+                    if (event.touches.length > 1 ||
+                        event.scale && event.scale !== 1 ||
+                        slider.slideIsDisabled) {
+                        return;
+                    }
 
                     if (options.disableScroll) event.preventDefault();
 
@@ -339,11 +345,11 @@
                     delta = {
                         x: touches.pageX - start.x,
                         y: touches.pageY - start.y
-                    }
+                    };
 
                     // determine if scrolling test has run - one time test
                     if (typeof isScrolling == 'undefined') {
-                        isScrolling = options.direction === 'vertical' ? (Math.abs(delta.x) > Math.abs(delta.y)) : (Math.abs(delta.x) < Math.abs(delta.y));
+                        isScrolling = !!(options.direction === 'vertical' ? (isScrolling || Math.abs(delta.x) > Math.abs(delta.y)) : (isScrolling || Math.abs(delta.x) < Math.abs(delta.y)));
                     }
 
                     // if user is not trying to scroll vertically
@@ -366,12 +372,12 @@
 
                             delta[posName] =
                                 delta[posName] /
-                                ((!index && delta[posName] > 0 // if first slide and sliding left
-                                    || index == slides.length - 1 // or if last slide and sliding right
-                                    && delta[posName] < 0 // and if sliding at all
-                                ) ?
-                                (Math.abs(delta[posName]) / wh + 1) // determine resistance level
-                                : 1); // no resistance if false
+                                ((!index && delta[posName] > 0 || // if first slide and sliding left
+                                        index == slides.length - 1 && // or if last slide and sliding right
+                                        delta[posName] < 0 // and if sliding at all
+                                    ) ?
+                                    (Math.abs(delta[posName]) / wh + 1) // determine resistance level
+                                    : 1); // no resistance if false
 
                             // translate 1:1
                             translate(index - 1, delta[posName] + slidePos[index - 1], 0);
@@ -385,17 +391,17 @@
                 end: function(event) {
 
                     // measure duration
-                    var duration = +new Date - start.time;
+                    var duration = +new Date() - start.time;
 
                     // determine if slide attempt triggers next/prev slide
                     var isValidSlide =
-                        Number(duration) < 250 // if slide duration is less than 250ms
-                    && Math.abs(delta[posName]) > 20 // and if slide amt is greater than 20px
-                    || Math.abs(delta[posName]) > wh / 2; // or if slide amt is greater than half the width or height
+                        Number(duration) < 250 && // if slide duration is less than 250ms
+                        Math.abs(delta[posName]) > 20 || // and if slide amt is greater than 20px
+                        Math.abs(delta[posName]) > wh / 2; // or if slide amt is greater than half the width
 
                     // determine if slide attempt is past start and end
-                    var isPastBounds = !index && delta[posName] > 0 // if first slide and slide amt is greater than 0
-                    || index == slides.length - 1 && delta[posName] < 0; // or if last slide and slide amt is less than 0
+                    var isPastBounds = (!index && delta[posName] > 0) || // if first slide and slide amt is greater than 0
+                        (index == slides.length - 1 && delta[posName] < 0); // or if last slide and slide amt is less than 0
 
                     if (options.continuous) isPastBounds = false;
 
@@ -461,11 +467,11 @@
 
                     // kill touchmove and touchend event listeners until touchstart called again
                     if (browser.touch) {
-                        element.removeEventListener('touchmove', events, false)
-                        element.removeEventListener('touchend', events, false)
+                        element.removeEventListener('touchmove', events, false);
+                        element.removeEventListener('touchend', events, false);
                     } else {
-                        element.removeEventListener('mousemove', events, false)
-                        element.removeEventListener('mouseup', events, false)
+                        element.removeEventListener('mousemove', events, false);
+                        element.removeEventListener('mouseup', events, false);
                         document.removeEventListener('mouseup', events, false);
                     }
 
@@ -482,43 +488,41 @@
 
                 }
 
-            }
+            };
 
             // Public API
+            this.update = function() {
+                setTimeout(setup);
+            };
             this.setup = function() {
                 setup();
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#slide
-             * @param {number} to The index to slide to.
-             * @param {number=} speed The number of milliseconds for the change to take.
-             */
-            this.slide = function(to, speed) {
-                // cancel slideshow
-                stop();
-
-                slide(to, speed);
+            this.loop = function(value) {
+                if (arguments.length) options.continuous = !!value;
+                return options.continuous;
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#prev
-             * @description Go to the previous slide. Wraps around if at the beginning.
-             */
-            this.prev = function() {
+            this.enableSlide = function(shouldEnable) {
+                    if (arguments.length) {
+                        this.slideIsDisabled = !shouldEnable;
+                    }
+                    return !this.slideIsDisabled;
+                },
+                this.slide = this.select = function(to, speed) {
+                    // cancel slideshow
+                    stop();
+
+                    slide(to, speed);
+                };
+
+            this.prev = this.previous = function() {
                 // cancel slideshow
                 stop();
 
                 prev();
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#next
-             * @description Go to the next slide. Wraps around if at the end.
-             */
             this.next = function() {
                 // cancel slideshow
                 stop();
@@ -526,33 +530,30 @@
                 next();
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#stop
-             * @description Stop sliding. The slideBox will not move again until
-             * explicitly told to do so.
-             */
             this.stop = function() {
                 // cancel slideshow
                 stop();
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#currentIndex
-             * @returns number The index of the current slide.
-             */
-            this.currentIndex = function() {
+            this.start = function() {
+                begin();
+            };
+
+            this.autoPlay = function(newDelay) {
+                if (!delay || delay < 0) {
+                    stop();
+                } else {
+                    delay = newDelay;
+                    begin();
+                }
+            };
+
+            this.currentIndex = this.selected = function() {
                 // return current index position
                 return index;
             };
 
-            /**
-             * @ngdoc method
-             * @name ionicSlideBox#slidesCount
-             * @returns number The number of slides there are currently.
-             */
-            this.slidesCount = function() {
+            this.slidesCount = this.count = function() {
                 // return total number of slides
                 return length;
             };
@@ -570,7 +571,6 @@
                 while (pos--) {
 
                     var slide = slides[pos];
-
                     slide.style[whCssName] = '';
                     slide.style[ltCssName] = '';
 
@@ -629,99 +629,119 @@
                 } else {
 
                     window.onresize = function() {
-                        setup()
+                        setup();
                     }; // to play nice with old IE
 
                 }
-            }
+            };
 
         }
     });
 
-
     angular.module('ionic.ui.superSlideBox', [])
-    .directive('ionSuperSlideBox', ['$timeout', '$compile', '$ionicSlideBoxDelegate',
-        function($timeout, $compile, $ionicSlideBoxDelegate) {
+    .directive('ionSuperSlideBox', [
+        '$timeout',
+        '$compile',
+        '$ionicSlideBoxDelegate',
+        '$ionicHistory',
+        function($timeout, $compile, $ionicSlideBoxDelegate, $ionicHistory) {
             return {
                 restrict: 'E',
                 replace: true,
                 transclude: true,
                 scope: {
+                    autoPlay: '=',
                     doesContinue: '@',
                     slideInterval: '@',
                     showPager: '@',
+                    pagerClick: '&',
                     disableScroll: '@',
                     onSlideChanged: '&',
                     direction: '=?',
                     activeSlide: '=?'
                 },
-                controller: ['$scope', '$element', '$attrs', '$parse',
-                    function($scope, $element, $attrs, $parse) {
-                        var _this = this;
+                controller: ['$scope', '$element', '$attrs', function($scope, $element, $attrs) {
+                    var _this = this;
 
-                        var continuous = $scope.$eval($scope.doesContinue) === true;
-                        var slideInterval = continuous ? $scope.$eval($scope.slideInterval) || 4000 : 0;
+                    var continuous = $scope.$eval($scope.doesContinue) === true;
+                    var shouldAutoPlay = angular.isDefined($attrs.autoPlay) ? !!$scope.autoPlay : false;
+                    var slideInterval = shouldAutoPlay ? $scope.$eval($scope.slideInterval) || 4000 : 0;
 
-                        var slider = new ionic.views.SuperSlider({
-                            el: $element[0],
-                            auto: slideInterval,
-                            disableScroll: ($scope.$eval($scope.disableScroll) === true) || false,
-                            continuous: continuous,
-                            direction: $scope.direction,
-                            startSlide: $scope.activeSlide,
-                            slidesChanged: function() {
-                                $scope.currentSlide = slider.currentIndex();
+                    var slider = new ionic.views.SuperSlider({
+                        el: $element[0],
+                        auto: slideInterval,
+                        continuous: continuous,
+                        direction: $scope.direction,
+                        startSlide: $scope.activeSlide,
+                        slidesChanged: function() {
+                            $scope.currentSlide = slider.currentIndex();
 
-                                // Try to trigger a digest
-                                $timeout(function() {});
-                            },
-                            callback: function(slideIndex) {
-                                $scope.currentSlide = slideIndex;
-                                $scope.onSlideChanged({
-                                    index: $scope.currentSlide
-                                });
-                                $scope.$parent.$broadcast('slideBox.slideChanged', slideIndex);
-                                $scope.activeSlide = slideIndex;
-                                // Try to trigger a digest
-                                $timeout(function() {});
-                            }
+                            // Try to trigger a digest
+                            $timeout(function() {});
+                        },
+                        callback: function(slideIndex) {
+                            $scope.currentSlide = slideIndex;
+                            $scope.onSlideChanged({
+                                index: $scope.currentSlide,
+                                $index: $scope.currentSlide
+                            });
+                            $scope.$parent.$broadcast('slideBox.slideChanged', slideIndex);
+                            $scope.activeSlide = slideIndex;
+                            // Try to trigger a digest
+                            $timeout(function() {});
+                        }
+                    });
+
+                    slider.enableSlide($scope.$eval($attrs.disableScroll) !== true);
+
+                    $scope.$watch('activeSlide', function(nv) {
+                        if (angular.isDefined(nv)) {
+                            slider.slide(nv);
+                        }
+                    });
+
+                    $scope.$on('slideBox.nextSlide', function() {
+                        slider.next();
+                    });
+
+                    $scope.$on('slideBox.prevSlide', function() {
+                        slider.prev();
+                    });
+
+                    $scope.$on('slideBox.setSlide', function(e, index) {
+                        slider.slide(index);
+                    });
+
+                    //Exposed for testing
+                    this.__slider = slider;
+
+                    var deregisterInstance = $ionicSlideBoxDelegate._registerInstance(
+                        slider, $attrs.delegateHandle,
+                        function() {
+                            return $ionicHistory.isActiveScope($scope);
+                        }
+                    );
+                    $scope.$on('$destroy', deregisterInstance);
+
+                    this.slidesCount = function() {
+                        return slider.slidesCount();
+                    };
+
+                    this.onPagerClick = function(index) {
+                        void 0;
+                        $scope.pagerClick({
+                            index: index
                         });
+                    };
 
-                        $scope.$watch('activeSlide', function(nv) {
-                            if (angular.isDefined(nv)) {
-                                slider.slide(nv);
-                            }
-                        });
-
-                        $scope.$on('slideBox.nextSlide', function() {
-                            slider.next();
-                        });
-
-                        $scope.$on('slideBox.prevSlide', function() {
-                            slider.prev();
-                        });
-
-                        $scope.$on('slideBox.setSlide', function(e, index) {
-                            slider.slide(index);
-                        });
-
-                        $parse($attrs.model || 'slideBoxController').assign($scope.$parent, slider);
-
-                        $ionicSlideBoxDelegate.register($scope, $element);
-
-                        this.slidesCount = function() {
-                            return slider.slidesCount();
-                        };
-
-                        $timeout(function() {
-                            slider.load();
-                        });
-                    }
-                ],
-                template: '<div class="slider">\
-            <div class="slider-slides" ng-transclude>\
-            </div>\
-          </div>',
+                    $timeout(function() {
+                        slider.load();
+                    });
+                }],
+                template: '<div class="slider">' +
+                    '<div class="slider-slides" ng-transclude>' +
+                    '</div>' +
+                    '</div>',
 
                 link: function($scope, $element, $attr, slideBoxCtrl) {
                     // If the pager should show, append it to the slide box
@@ -735,7 +755,6 @@
             };
         }
     ])
-
     .directive('ionSuperSlide', function() {
         return {
             restrict: 'E',
@@ -752,7 +771,7 @@
             restrict: 'E',
             replace: true,
             require: '^ionSuperSlideBox',
-            template: '<div class="slider-pager"><span class="slider-pager-page" ng-repeat="slide in numSlides() track by $index" ng-class="{active: $index == currentSlide}"><i class="icon ion-record"></i></span></div>',
+            template: '<div class="slider-pager"><span class="slider-pager-page" ng-repeat="slide in numSlides() track by $index" ng-class="{active: $index == currentSlide}" ng-click="pagerClick($index)"><i class="icon ion-record"></i></span></div>',
             link: function($scope, $element, $attr, slideBox) {
                 var selectPage = function(index) {
                     var children = $element[0].children;
@@ -764,6 +783,10 @@
                             children[i].classList.remove('active');
                         }
                     }
+                };
+
+                $scope.pagerClick = function(index) {
+                    slideBox.onPagerClick(index);
                 };
 
                 $scope.numSlides = function() {
