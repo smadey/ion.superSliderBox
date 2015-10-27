@@ -67,8 +67,13 @@
                 // create an array to store current positions of each slide
                 slidePos = new Array(slides.length);
 
-                // determine width of each slide
-                wh = container.getBoundingClientRect()[whCssName] || container[offset + (whCssName.slice(0, 1).toUpperCase() + whCssName.slice(1))];
+                // determine width or height of each slide from the nearest ionic-content
+				var ionicContent = ionic.DomUtil.getParentWithClass(container, 'scroll-content');
+				if (options.direction === 'vertical') {
+					wh = ionicContent.clientHeight;
+				} else {
+					wh = ionicContent.clientWidth;
+				}
 
                 element.style[whCssName] = (slides.length * wh) + 'px';
 
