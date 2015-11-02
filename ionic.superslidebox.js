@@ -68,7 +68,7 @@
                 slidePos = new Array(slides.length);
 
                 // determine width of each slide
-                wh = container.getBoundingClientRect()[whCssName] || container[offset + (whCssName.slice(0, 1).toUpperCase() + whCssName.slice(1))];
+                wh = container['offset' + (whCssName.slice(0, 1).toUpperCase() + whCssName.slice(1))] || container.getBoundingClientRect()[whCssName];
 
                 element.style[whCssName] = (slides.length * wh) + 'px';
 
